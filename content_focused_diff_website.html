@@ -1,0 +1,1008 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR5009 Tracing Tool</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 0 2rem;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: rgba(52, 152, 219, 0.1);
+            border: 2px solid #3498db;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .controls {
+            max-width: 1400px;
+            margin: 1rem auto;
+            padding: 0 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .filter-btn.active {
+            background: #e74c3c;
+        }
+        
+        .search-input {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            width: 300px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .main-content {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .traces-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .trace-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 5px solid #3498db;
+            position: relative;
+        }
+        
+        .trace-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        
+        .trace-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+        
+        .trace-path {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .stage-indicator {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .stage-ih { background: #e74c3c; }
+        .stage-rh { background: #f39c12; }
+        
+        .trace-arrow {
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+        
+        .trace-preview {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+
+        
+        /* Modal styles */
+        .trace-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+        }
+        
+        .trace-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 95vw;
+            height: 95vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+        }
+        
+        .modal-body {
+            height: calc(95vh - 100px);
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .diff-comparison {
+            border: 2px solid #e74c3c;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .diff-header {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .diff-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 500px;
+        }
+        
+        .diff-side {
+            padding: 1.5rem;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            overflow-y: auto;
+            max-height: 500px;
+            background: #fafbfc;
+        }
+        
+        .diff-side:first-child {
+            border-right: 3px solid #e1e4e8;
+        }
+        
+        .diff-side-header {
+            font-weight: bold;
+            color: #24292e;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #d1d5da;
+            font-family: 'Segoe UI', sans-serif;
+            position: sticky;
+            top: 0;
+            background: #fafbfc;
+            z-index: 10;
+            font-size: 1.1rem;
+        }
+        
+        /* Content-focused diff styles */
+        .content-added {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 500;
+            border-left: 3px solid #28a745;
+            margin: 0.2rem 0;
+            display: inline-block;
+        }
+        
+        .content-removed {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            text-decoration: line-through;
+            font-weight: 500;
+            border-left: 3px solid #dc3545;
+            margin: 0.2rem 0;
+            display: inline-block;
+        }
+        
+        .content-unchanged {
+            color: #333;
+        }
+        
+        .content-modified {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 500;
+            border-left: 3px solid #ffc107;
+            margin: 0.2rem 0;
+            display: inline-block;
+        }
+        
+        .diff-stats {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stat-box {
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-added { 
+            background: linear-gradient(135deg, #f0fff4, #dcffe4); 
+            color: #22863a; 
+            border-left: 4px solid #34d058;
+        }
+        .stat-removed { 
+            background: linear-gradient(135deg, #ffeef0, #fdb8c0); 
+            color: #d73a49; 
+            border-left: 4px solid #d73a49;
+        }
+        .stat-unchanged { 
+            background: linear-gradient(135deg, #f6f8fa, #e1e4e8); 
+            color: #586069; 
+            border-left: 4px solid #959da5;
+        }
+        .stat-similarity { 
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb); 
+            color: #1976d2; 
+            border-left: 4px solid #2196f3;
+        }
+        
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .diff-note {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-shield-alt"></i> HR5009 Tracing Tool</h1>
+            <h2>H.R. 8070 IH --> RH</h2>
+
+        </div>
+    </header>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <button class="filter-btn active" onclick="filterTraces('all')">All Sections</button>
+        <input type="text" class="search-input" placeholder="Search sections..." onkeyup="searchTraces(this.value)">
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="traces-container" class="traces-container">
+            <!-- Traces will be loaded here -->
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="trace-modal" class="trace-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title"><i class="fas fa-shield-alt"></i> Content Analysis</h3>
+                <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="diff-note">
+                    <strong>Note:</strong> This diff focuses on meaningful content changes and ignores minor spacing, formatting, and punctuation differences.
+                </div>
+                <div id="diff-stats" class="diff-stats"></div>
+                <div id="diff-comparison" class="diff-comparison">
+                    <div class="diff-header">
+                        <h4 id="diff-title">Content-Focused Comparison</h4>
+                    </div>
+                    <div class="diff-body">
+                        <div class="diff-side">
+                            <div class="diff-side-header">IH - Introduced</div>
+                            <div id="diff-left-content"></div>
+                        </div>
+                        <div class="diff-side">
+                            <div class="diff-side-header">RH - Committee</div>
+                            <div id="diff-right-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let tracesData = [
+  {
+    "trace_id": "ih_rh_2",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 101. Reform of rates of monthly basic pay",
+      "text": "Effective on January 1, 2025, the rates of monthly basic pay for members of the uniformed services within each pay grade and with years of service computed under section 205 of title 37, United States Code (and subject to adjustment under section 1009 of such title), are as follows:Years of ServiceCommissioned OfficersPay Grade2 or FewerOver 2Over 3Over 4Over 6O\u20138$12,803.70 $13,223.70$13,501.80 $13,579.20 $13,926.90O\u2013710,638.90 11,133.0011,361.9011,544.0011,872.80O\u20136 8,067.90 8,863.209,444.909,444.909,481.20O\u20135 6,725.70 7,576.508,100.908,199.608,527.20O\u20134 5,803.20 6,717.307,166.407,265.407,681.50O\u20133 5,102.10 5,783.706,241.806,806.107,132.80O\u20132 4,408.50 5,020.805,782.805,978.106,100.80O\u20131 3,826.20 3,982.804,814.704,814.704,814.70 Over 8 Over 10 Over 12 Over 14 Over 16O\u20138 $14,506.50 $14,641.80$15,192.60$15,351.30$15,825.90O\u20137 12,198.30 12,574.2012,948.9013,325.4014,506.50 O\u201369,887.40 9,941.409,941.4010,506.3011,505.00 O\u201358,722.50 9,153.009,469.809,878.1010,501.80 O\u201348,127.90 8,684.10 9,116.109,416.709,589.50 O\u20133 7,490.70 7,721.708,102.108,301.008,301.00 O\u20132 6,100.80 6,100.806,100.806,100.806,100.80 O\u20131 4,814.70  4,814.70  4,814.70  4,814.70  4,814.70 Over 18Over 20Over 22Over 24Over 26O\u201310 $0.00 $18,491.70$18,491.70$18,491.70$18,491.70 O\u20139 0.00 18,096.00 18,357.30 18,491.7018,491.70 O\u20138 16,512.90 17,145.6017,568.6017,568.6017,568.60 O\u20137 15,504.30 15,504.3015,504.3015,504.3015,584.10 O\u20136 12,091.20 12,677.1013,010.7013,348.5014,002.80 O\u20135 10,799.10 11,093.1011,426.7011,426.7011,426.70 O\u20134 9,689.10 9,689.109,689.109,689.109,689.10 O\u20133 8,301.00 8,301.008,301.008,301.008,301.00 O\u201326,100.80 6,100.80 6,100.80 6,100.80 6,100.80 O\u201314,814.704,814.704,814.704,814.704,814.70Over 28Over 30Over 32Over 34Over 36O\u201310$18,491.70$18,491.70$18,491.70$18,491.70$18,491.70O\u2013918,491.7018,491.7018,491.7018,491.7018,491.70O\u20138 17,568.60 18,008.4018,008.4018,458.1018,458.10 O\u20137 15,584.10 15,895.8015,895.8015,895.8015,895.80 O\u20136 14,002.80 14,282.4014,282.4014,282.4014,282.40 O\u20135 11,426.70  11,426.70  11,426.70  11,426.70  11,426.70 O\u201349,689.10 9,689.10 9,689.10 9,689.10 9,689.10 O\u201338,301.00 8,301.00 8,301.00 8,301.00 8,301.00 O\u201326,100.80 6,100.80 6,100.80 6,100.80 6,100.80 O\u20131 4,814.70  4,814.70  4,814.70  4,814.70  4,814.70 Over 38Over 40O\u201310$18,491.70 $18,491.70 O\u2013918,491.70 18,491.70 O\u2013818,458.10 18,458.10 O\u2013715,895.80 15,895.80 O\u2013614,282.40 14,282.40 O\u2013511,426.70 11,426.70 O\u201349,689.10 9,689.10 O\u201338,301.00 8,301.00 O\u201326,100.80 6,100.80 O\u201314,814.70 4,814.70 Commissioned Officers With Over 4 Years of Active Duty Service As An Enlisted Member or Warrant OfficerPay Grade2 or FewerOver 2Over 3Over 4Over 6O\u20133E$0.00 $0.00 $0.00 $6,806.10 $7,132.80 O\u20132E0.00 0.00 0.00 5,978.10 6,100.80O\u20131E0.00 0.00 0.00 4,814.705,141.10Over 8Over 10Over 12Over 14 Over 16O\u20133E$7,490.70 $7,721.70 $8,102.10 $8,423.40 $8,607.90 O\u20132E6,294.90 6,622.80 6,876.60 7,065.00 7,065.00 O\u20131E5,331.30 5,525.70 5,716.50 5,978.10 5,978.10 Over 18Over 20Over 22Over 24Over 26O\u20133E$8,859.00 $8,859.00 $8,859.00 $8,859.00 $8,859.00 O\u20132E7,065.00 7,065.00 7,065.00 7,065.00 7,065.00 O\u20131E 5,978.10 5,978.10 5,978.10 5,978.10 5,978.10Over 28 Over 30Over 32Over 34Over 36 O\u20133E$8,859.00 $8,859.00 $8,859.00 $8,859.00 $8,859.00 O\u20132E7,065.00 7,065.00 7,065.00 7,065.00 7,065.00 O\u20131E5,978.10 5,978.10 5,978.10 5,978.10 5,978.10 Over 38Over 40O\u20133E$8,859.00 $8,859.00 O\u20132E7,065.00 7,065.00 O\u20131E5,978.10 5,978.10 Warrant OfficersPay Grade2 or FewerOver 2Over 3Over 4Over 6W\u20134$5,273.10 $5,671.50 $5,834.40 $5,994.60 $6,270.60 W\u20133 4,815.60 5,015.705,222.105,289.005,504.40 W\u20132 4,260.90 4,663.804,787.704,873.205,149.20 W\u20131 3,739.80 4,143.004,250.704,479.604,749.90 Over 8Over 10Over 12Over 14 Over 16W\u20134$6,543.60 $6,820.20$7,235.40$7,599.90$7,946.70 W\u20133 5,928.90 6,370.806,579.006,819.907,067.40 W\u20132 5,578.50 5,791.806,001.206,257.406,457.80 W\u20131 5,148.30 5,334.305,595.305,850.906,052.20 Over 18Over 20Over 22Over 24Over 26W\u20135$9,375.60 $9,375.60$9,851.10$10,205.70$10,597.20 W\u20134 8,231.10 8,508.308,914.509,248.709,629.70 W\u20133 7,513.80 7,814.707,994.708,186.108,447.10 W\u20132 6,639.00 6,856.206,998.707,111.807,111.80 W\u20131 6,237.60 6,462.906,462.906,462.906,462.90 Over 28 Over 30Over 32Over 34Over 36 W\u20135$10,597.20 $11,128.20$11,128.20$11,683.50$11,683.50 W\u20134 9,629.70 9,821.709,821.709,821.709,821.70 W\u201338,447.10 8,447.10 8,447.10 8,447.10 8,447.10 W\u20132 7,111.80  7,111.80  7,111.80  7,111.80  7,111.80 W\u201316,462.90 6,462.90 6,462.90 6,462.90 6,462.90 Over 38Over 40W\u20135$12,269.10 $12,269.10 W\u201349,821.70 9,821.70 W\u201338,447.10 8,447.10 W\u201327,111.80 7,111.80 W\u20131 6,462.90  6,462.90 Enlisted MembersPay Grade2 or FewerOver 2Over 3Over 4Over 6E\u20137$3,624.90 $3,956.40$4,108.20$4,308.30$4,465.50 E\u20136 3,135.60 3,450.603,603.003,750.903,904.80E\u20135 3,082.20 3,317.103,479.403,638.703,790.80 E\u20134 3,028.80 3,183.603,356.103,526.203,677.10E\u20133 2,733.90 2,906.103,082.203,082.203,082.20 E\u201322,600.10 2,600.10 2,600.10 2,600.10 2,600.10 E\u201312,319.90 2,319.90 2,319.90 2,319.90 2,319.90 Over 8Over 10Over 12Over 14 Over 16E\u20139$0.00 $6,370.50$6,514.80$6,696.60$6,910.50 E\u201385,214.90 5,445.605,588.405,759.405,944.50 E\u20137 4,734.60 4,886.405,155.205,379.305,532.30 E\u20136 4,252.50 4,387.804,649.704,729.804,788.00 E\u20135 3,964.80 4,052.104,076.404,076.404,076.40E\u20134 3,677.10  3,677.10  3,677.10  3,677.10  3,677.10 E\u201333,082.203,082.20 3,082.20 3,082.20 3,082.20 E\u201322,600.102,600.10 2,600.10 2,600.10 2,600.10 E\u201312,319.90 2,319.90 2,319.90 2,319.90 2,319.90 Over 18Over 20Over 22Over 24Over 26E\u20139$7,127.10 $7,472.10$7,765.20$8,072.70$8,544.00 E\u20138 6,279.30 6,449.106,737.406,897.307,291.20 E\u20137 5,694.90 5,757.905,969.706,083.106,515.70 E\u201364,856.40 4,856.40 4,856.40 4,856.40 4,856.40 E\u201354,076.404,076.404,076.404,076.404,076.40E\u201343,677.10 3,677.10 3,677.10 3,677.10 3,677.10 E\u201333,082.20 3,082.20 3,082.20 3,082.20 3,082.20 E\u201322,600.10 2,600.10 2,600.10 2,600.10 2,600.10 E\u201312,319.90 2,319.90 2,319.90 2,319.90 2,319.90 Over 28Over 30Over 32Over 34Over 36E\u20139$8,544.00 $8,970.30$8,970.30$9,419.40$9,419.40 E\u20138 7,291.20 7,437.307,437.307,437.307,437.30 E\u201376,515.70 6,515.70 6,515.70 6,515.70 6,515.70 E\u20136 4,856.40  4,856.40  4,856.40  4,856.40  4,856.40 E\u201354,076.404,076.404,076.404,076.404,076.40E\u20134 3,677.10  3,677.10  3,677.10  3,677.10  3,677.10 E\u20133 3,082.20  3,082.20  3,082.20  3,082.20  3,082.20 E\u201322,600.10 2,600.10 2,600.10 2,600.10 2,600.10 E\u201312,319.90 2,319.90 2,319.90 2,319.90 2,319.90 Over 38Over 40E\u20139$9,891.30 $9,891.30 E\u201387,437.30 7,437.30 E\u201376,515.70 6,515.70 E\u201364,856.40 4,856.40 E\u201354,076.404,076.40E\u20134 3,677.10  3,677.10 E\u20133 3,082.20  3,082.20 E\u201322,600.10 2,600.10 E\u201312,319.90 2,319.90",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1801.  Reform of rates of monthly basic pay.",
+      "text": "Effective on January 1, 2025, the rates of monthly basic pay for members of the uniformed services within each pay grade and with years of service computed under section 205 of title 37, United States Code (and subject to adjustment under section 1009 of such title), are as follows:\n\nYears of Service\nCommissioned Officers\n\nPay Grade\n2 or Fewer\nOver 2\nOver 3\nOver 4\nOver 6\n\nO-8\n$12,803.70 \n$13,223.70\n$13,501.80 \n$13,579.20 \n$13,926.90\n\nO-7\n10,638.90 \n11,133.00\n11,361.90\n11,544.00\n11,872.80\n\nO-6\n 8,067.90 \n8,863.20\n9,444.90\n9,444.90\n9,481.20\n\nO-5\n 6,725.70 \n7,576.50\n8,100.90\n8,199.60\n8,527.20\n\nO-4\n 5,803.20 \n6,717.30\n7,166.40\n7,265.40\n7,681.50\n\nO-3\n 5,102.10 \n5,783.70\n6,241.80\n6,806.10\n7,132.80\n\nO-2\n 4,408.50 \n5,020.80\n5,782.80\n5,978.10\n6,100.80\n\nO-1\n 3,826.20 \n3,982.80\n4,814.70\n4,814.70\n4,814.70\n\n Over 8\n Over 10\n Over 12\n Over 14\n Over 16\n\nO-8\n $14,506.50 \n$14,641.80\n$15,192.60\n$15,351.30\n$15,825.90\n\nO-7\n 12,198.30 \n12,574.20\n12,948.90\n13,325.40\n14,506.50 \n\nO-6\n9,887.40 \n9,941.40\n9,941.40\n10,506.30\n11,505.00 \n\nO-5\n8,722.50 \n9,153.00\n9,469.80\n9,878.10\n10,501.80 \n\nO-4\n8,127.90 \n8,684.10 \n9,116.10\n9,416.70\n9,589.50 \n\nO-3\n 7,490.70 \n7,721.70\n8,102.10\n8,301.00\n8,301.00 \n\nO-2\n 6,100.80 \n6,100.80\n6,100.80\n6,100.80\n6,100.80 \n\nO-1\n 4,814.70 \n 4,814.70 \n 4,814.70 \n 4,814.70 \n 4,814.70 \n\nOver 18\nOver 20\nOver 22\nOver 24\nOver 26\n\nO-10\n $0.00 \n$18,491.70\n$18,491.70\n$18,491.70\n$18,491.70 \n\nO-9\n 0.00 \n18,096.00 \n18,357.30 \n18,491.70\n18,491.70 \n\nO-8\n 16,512.90 \n17,145.60\n17,568.60\n17,568.60\n17,568.60 \n\nO-7\n 15,504.30 \n15,504.30\n15,504.30\n15,504.30\n15,584.10 \n\nO-6\n 12,091.20 \n12,677.10\n13,010.70\n13,348.50\n14,002.80 \n\nO-5\n 10,799.10 \n11,093.10\n11,426.70\n11,426.70\n11,426.70 \n\nO-4\n 9,689.10 \n9,689.10\n9,689.10\n9,689.10\n9,689.10 \n\nO-3\n 8,301.00 \n8,301.00\n8,301.00\n8,301.00\n8,301.00 \n\nO-2\n6,100.80 \n6,100.80 \n6,100.80 \n6,100.80 \n6,100.80 \n\nO-1\n4,814.70\n4,814.70\n4,814.70\n4,814.70\n4,814.70\n\nOver 28\nOver 30\nOver 32\nOver 34\nOver 36\n\nO-10\n$18,491.70\n$18,491.70\n$18,491.70\n$18,491.70\n$18,491.70\n\nO-9\n18,491.70\n18,491.70\n18,491.70\n18,491.70\n18,491.70\n\nO-8\n 17,568.60 \n18,008.40\n18,008.40\n18,458.10\n18,458.10 \n\nO-7\n 15,584.10 \n15,895.80\n15,895.80\n15,895.80\n15,895.80 \n\nO-6\n 14,002.80 \n14,282.40\n14,282.40\n14,282.40\n14,282.40 \n\nO-5\n 11,426.70 \n 11,426.70 \n 11,426.70 \n 11,426.70 \n 11,426.70 \n\nO-4\n9,689.10 \n9,689.10 \n9,689.10 \n9,689.10 \n9,689.10 \n\nO-3\n8,301.00 \n8,301.00 \n8,301.00 \n8,301.00 \n8,301.00 \n\nO-2\n6,100.80 \n6,100.80 \n6,100.80 \n6,100.80 \n6,100.80 \n\nO-1\n 4,814.70 \n 4,814.70 \n 4,814.70 \n 4,814.70 \n 4,814.70 \n\nOver 38\nOver 40\n\nO-10\n$18,491.70 \n$18,491.70 \n\nO-9\n18,491.70 \n18,491.70 \n\nO-8\n18,458.10 \n18,458.10 \n\nO-7\n15,895.80 \n15,895.80 \n\nO-6\n14,282.40 \n14,282.40 \n\nO-5\n11,426.70 \n11,426.70 \n\nO-4\n9,689.10 \n9,689.10 \n\nO-3\n8,301.00 \n8,301.00 \n\nO-2\n6,100.80 \n6,100.80 \n\nO-1\n4,814.70 \n4,814.70 \n\nCommissioned Officers With Over 4 Years of Active Duty Service As An Enlisted Member or Warrant Officer\n\nPay Grade\n2 or Fewer\nOver 2\nOver 3\nOver 4\nOver 6\n\nO-3E\n$0.00 \n$0.00 \n$0.00 \n$6,806.10 \n$7,132.80 \n\nO-2E\n0.00 \n0.00 \n0.00 \n5,978.10 \n6,100.80\n\nO-1E\n0.00 \n0.00 \n0.00 \n4,814.70\n5,141.10\n\nOver 8\nOver 10\nOver 12\nOver 14\n Over 16\n\nO-3E\n$7,490.70 \n$7,721.70 \n$8,102.10 \n$8,423.40 \n$8,607.90 \n\nO-2E\n6,294.90 \n6,622.80 \n6,876.60 \n7,065.00 \n7,065.00 \n\nO-1E\n5,331.30 \n5,525.70 \n5,716.50 \n5,978.10 \n5,978.10 \n\nOver 18\nOver 20\nOver 22\nOver 24\nOver 26\n\nO-3E\n$8,859.00 \n$8,859.00 \n$8,859.00 \n$8,859.00 \n$8,859.00 \n\nO-2E\n7,065.00 \n7,065.00 \n7,065.00 \n7,065.00 \n7,065.00 \n\nO-1E\n 5,978.10\n 5,978.10\n 5,978.10\n 5,978.10\n 5,978.10\n\nOver 28 \nOver 30\nOver 32\nOver 34\nOver 36 \n\nO-3E\n$8,859.00 \n$8,859.00 \n$8,859.00 \n$8,859.00 \n$8,859.00 \n\nO-2E\n7,065.00 \n7,065.00 \n7,065.00 \n7,065.00 \n7,065.00 \n\nO-1E\n5,978.10 \n5,978.10 \n5,978.10 \n5,978.10 \n5,978.10 \n\nOver 38\nOver 40\n\nO-3E\n$8,859.00 \n$8,859.00 \n\nO-2E\n7,065.00 \n7,065.00 \n\nO-1E\n5,978.10 \n5,978.10 \n\nWarrant Officers\n\nPay Grade\n2 or Fewer\nOver 2\nOver 3\nOver 4\nOver 6\n\nW-4\n$5,273.10 \n$5,671.50 \n$5,834.40 \n$5,994.60 \n$6,270.60 \n\nW-3\n 4,815.60 \n5,015.70\n5,222.10\n5,289.00\n5,504.40 \n\nW-2\n 4,260.90 \n4,663.80\n4,787.70\n4,873.20\n5,149.20 \n\nW-1\n 3,739.80 \n4,143.00\n4,250.70\n4,479.60\n4,749.90 \n\nOver 8\nOver 10\nOver 12\nOver 14\n Over 16\n\nW-4\n$6,543.60 \n$6,820.20\n$7,235.40\n$7,599.90\n$7,946.70 \n\nW-3\n 5,928.90 \n6,370.80\n6,579.00\n6,819.90\n7,067.40 \n\nW-2\n 5,578.50 \n5,791.80\n6,001.20\n6,257.40\n6,457.80 \n\nW-1\n 5,148.30 \n5,334.30\n5,595.30\n5,850.90\n6,052.20 \n\nOver 18\nOver 20\nOver 22\nOver 24\nOver 26\n\nW-5\n$9,375.60 \n$9,375.60\n$9,851.10\n$10,205.70\n$10,597.20 \n\nW-4\n 8,231.10 \n8,508.30\n8,914.50\n9,248.70\n9,629.70 \n\nW-3\n 7,513.80 \n7,814.70\n7,994.70\n8,186.10\n8,447.10 \n\nW-2\n 6,639.00 \n6,856.20\n6,998.70\n7,111.80\n7,111.80 \n\nW-1\n 6,237.60 \n6,462.90\n6,462.90\n6,462.90\n6,462.90 \n\nOver 28 \nOver 30\nOver 32\nOver 34\nOver 36 \n\nW-5\n$10,597.20 \n$11,128.20\n$11,128.20\n$11,683.50\n$11,683.50 \n\nW-4\n 9,629.70 \n9,821.70\n9,821.70\n9,821.70\n9,821.70 \n\nW-3\n8,447.10 \n8,447.10 \n8,447.10 \n8,447.10 \n8,447.10 \n\nW-2\n 7,111.80 \n 7,111.80 \n 7,111.80 \n 7,111.80 \n 7,111.80 \n\nW-1\n6,462.90 \n6,462.90 \n6,462.90 \n6,462.90 \n6,462.90 \n\nOver 38\nOver 40\n\nW-5\n$12,269.10 \n$12,269.10 \n\nW-4\n9,821.70 \n9,821.70 \n\nW-3\n8,447.10 \n8,447.10 \n\nW-2\n7,111.80 \n7,111.80 \n\nW-1\n 6,462.90 \n 6,462.90 \n\nEnlisted Members\n\nPay Grade\n2 or Fewer\nOver 2\nOver 3\nOver 4\nOver 6\n\nE-7\n$3,624.90 \n$3,956.40\n$4,108.20\n$4,308.30\n$4,465.50 \n\nE-6\n 3,135.60 \n3,450.60\n3,603.00\n3,750.90\n3,904.80\n\nE-5\n 3,082.20 \n3,317.10\n3,479.40\n3,638.70\n3,790.80 \n\nE-4\n 3,028.80 \n3,183.60\n3,356.10\n3,526.20\n3,677.10\n\nE-3\n 2,733.90 \n2,906.10\n3,082.20\n3,082.20\n3,082.20 \n\nE-2\n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n\nE-1\n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n\nOver 8\nOver 10\nOver 12\nOver 14\n Over 16\n\nE-9\n$0.00 \n$6,370.50\n$6,514.80\n$6,696.60\n$6,910.50 \n\nE-8\n5,214.90 \n5,445.60\n5,588.40\n5,759.40\n5,944.50 \n\nE-7\n 4,734.60 \n4,886.40\n5,155.20\n5,379.30\n5,532.30 \n\nE-6\n 4,252.50 \n4,387.80\n4,649.70\n4,729.80\n4,788.00 \n\nE-5\n 3,964.80 \n4,052.10\n4,076.40\n4,076.40\n4,076.40\n\nE-4\n 3,677.10 \n 3,677.10 \n 3,677.10 \n 3,677.10 \n 3,677.10 \n\nE-3\n3,082.20\n3,082.20 \n3,082.20 \n3,082.20 \n3,082.20 \n\nE-2\n2,600.10\n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n\nE-1\n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n\nOver 18\nOver 20\nOver 22\nOver 24\nOver 26\n\nE-9\n$7,127.10 \n$7,472.10\n$7,765.20\n$8,072.70\n$8,544.00 \n\nE-8\n 6,279.30 \n6,449.10\n6,737.40\n6,897.30\n7,291.20 \n\nE-7\n 5,694.90 \n5,757.90\n5,969.70\n6,083.10\n6,515.70 \n\nE-6\n4,856.40 \n4,856.40 \n4,856.40 \n4,856.40 \n4,856.40 \n\nE-5\n4,076.40\n4,076.40\n4,076.40\n4,076.40\n4,076.40\n\nE-4\n3,677.10 \n3,677.10 \n3,677.10 \n3,677.10 \n3,677.10 \n\nE-3\n3,082.20 \n3,082.20 \n3,082.20 \n3,082.20 \n3,082.20 \n\nE-2\n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n\nE-1\n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n\nOver 28\nOver 30\nOver 32\nOver 34\nOver 36\n\nE-9\n$8,544.00 \n$8,970.30\n$8,970.30\n$9,419.40\n$9,419.40 \n\nE-8\n 7,291.20 \n7,437.30\n7,437.30\n7,437.30\n7,437.30 \n\nE-7\n6,515.70 \n6,515.70 \n6,515.70 \n6,515.70 \n6,515.70 \n\nE-6\n 4,856.40 \n 4,856.40 \n 4,856.40 \n 4,856.40 \n 4,856.40 \n\nE-5\n4,076.40\n4,076.40\n4,076.40\n4,076.40\n4,076.40\n\nE-4\n 3,677.10 \n 3,677.10 \n 3,677.10 \n 3,677.10 \n 3,677.10 \n\nE-3\n 3,082.20 \n 3,082.20 \n 3,082.20 \n 3,082.20 \n 3,082.20 \n\nE-2\n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n2,600.10 \n\nE-1\n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n2,319.90 \n\nOver 38\nOver 40\n\nE-9\n$9,891.30 \n$9,891.30 \n\nE-8\n7,437.30 \n7,437.30 \n\nE-7\n6,515.70 \n6,515.70 \n\nE-6\n4,856.40 \n4,856.40 \n\nE-5\n4,076.40\n4,076.40\n\nE-4\n 3,677.10 \n 3,677.10 \n\nE-3\n 3,082.20 \n 3,082.20 \n\nE-2\n2,600.10 \n2,600.10 \n\nE-1\n2,319.90 \n2,319.90",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_3",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 102. Evaluation of the rates of the basic allowance for subsistence",
+      "text": "Not later than April 1, 2025, the Secretary of Defense shall submit to the Committees on Armed Services of the Senate and House of Representatives a report containing the evaluation of the Secretary of the rates of the basic allowance for subsistence under section 402 of title 37, United States Code. Elements of such report shall include the following:(1)The determination of the Secretary whether such rates are sufficient.(2)Other factors that could be used to determine such rates, including\u2014(A)the number of dependents a member of the uniformed services has;(B)whether the member has access to fresh fruits, vegetables, dairy products, and meat;(C)whether the member has access to healthy food; and(D)the local costs of food, including at commissaries operated by the Secretary under chapter 147 of title 10, United States Code.(3)The recommendations of the Secretary whether, and how, such rates may be improved.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1803. Evaluation of the rates of the basic allowance for subsistence.",
+      "text": "Not later than April 1, 2025, the Secretary of Defense shall submit to the Committees on Armed Services of the Senate and House of Representatives a report containing the evaluation of the Secretary of the rates of the basic allowance for subsistence under section 402 of title 37, United States Code. Elements of such report shall include the following:\n\n (1) The determination of the Secretary whether such rates are sufficient.\n\n (2) Other factors that could be used to determine such rates, including\u2014\n (A) the number of dependents a member of the uniformed services has;\n\n (B) whether the member has access to fresh fruits, vegetables, dairy products, and meat;\n\n (C) whether the member has access to healthy food; and\n\n (D) the local costs of food, including at commissaries operated by the Secretary under chapter 147 of title 10, United States Code.\n\n (3) The recommendations of the Secretary whether, and how, such rates may be improved.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_4",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 103. Basic needs allowance for members on active service in the Armed Forces: expansion of eligibility; increase of amount",
+      "text": "(a)EligibilitySection 402b of title 37, United States Code, is amended, in subsection (b)(2)\u2014(1)in subparagraph (A)\u2014(A)by striking (A);(B)by striking 150 percent and inserting 200 percent; and(C)by striking ; or and inserting ; and; and(2)by striking subparagraph (B).(b)AmountSuch section is further amended, in subsection (c)(1)(A), by striking 150 percent (or, in the case of a member described in subsection (b)(2)(B), 200 percent) and inserting 200 percent.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1804. Basic needs allowance for members on active service in the Armed Forces: expansion of eligibility; increase of amount.",
+      "text": "(a) Eligibility.\u2014Section 402b of title 37, United States Code, is amended, in subsection (b)(2)\u2014\n (1) in subparagraph (A)\u2014\n (A) by striking \u201c(A)\u201d;\n\n (B) by striking \u201c150 percent\u201d and inserting \u201c200 percent\u201d; and\n\n (C) by striking \u201c; or\u201d and inserting \u201c; and\u201d; and\n\n (2) by striking subparagraph (B).\n\n (b) Amount.\u2014Such section is further amended, in subsection (c)(1)(A), by striking \u201c150 percent (or, in the case of a member described in subsection (b)(2)(B), 200 percent)\u201d and inserting \u201c200 percent\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_5",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 104. Basic allowance for housing: authorization of appropriations",
+      "text": "For fiscal year 2025, there is authorized to be appropriated $1,200,000,000 for the purpose of fully funding the basic allowance for housing for members of the uniformed services under section 403 of title 37, United States Code.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1802.  Basic allowance for housing: authorization of appropriations.",
+      "text": "For fiscal year 2025, there is authorized to be appropriated $1,200,000,000 for the purpose of fully funding the basic allowance for housing for members of the uniformed services under section 403 of title 37, United States Code.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_6",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 105. Expansion of authority of a commanding officer to authorize a basic allowance for housing for a member performing initial field or sea duty",
+      "text": "Subsection (f) of section 403 of title 37, United States Code, is amended\u2014(1)in paragraph (1)\u2014(A)by striking certifies that the member was necessarily required to procure quarters at the member's expense. and inserting an em dash; and(B)by adding at the end the following new subparagraphs:(A)certifies that the member was required to procure housing at the member's expense; or(B)determines that quarters at the duty station or in the field environment are inadequate or an impediment to morale, good order, or discipline.; and(2)in paragraph (2)(B)\u2014(A)by striking the Secretary may authorize and inserting a commanding officer may authorize;(B)by striking who is serving in pay grade E\u20134 or E\u20135 and inserting who is serving in a pay grade below E\u20136; and(C)by striking members serving in pay grades E\u20134 and E\u20135 and inserting such members. In authorizing an allowance under this subparagraph, the commanding officer shall consider the availability of quarters for the member and whether such quarters are inadequate or an impediment to morale, good order, or discipline.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1805. Expansion of authority of a commanding officer to authorize a basic allowance for housing for a member performing initial field or sea duty.",
+      "text": "Subsection (f) of section 403 of title 37, United States Code, is amended\u2014\n\n (1) in paragraph (1)\u2014\n (A) by striking \u201ccertifies that the member was necessarily required to procure quarters at the member's expense.\u201d and inserting an em dash; and\n\n (B) by adding at the end the following new subparagraphs:\n \u201c(A) certifies that the member was required to procure housing at the member's expense; or\n\n \u201c(B) determines that quarters at the duty station or in the field environment are inadequate or an impediment to morale, good order, or discipline.\u201d; and\n\n (2) in paragraph (2)(B)\u2014\n (A) by striking \u201cthe Secretary may authorize\u201d and inserting \u201ca commanding officer may authorize\u201d;\n\n (B) by striking \u201cwho is serving in pay grade E\u20134 or E\u20135\u201d and inserting \u201cwho is serving in a pay grade below E-6\u201d; and\n\n (C) by striking \u201cmembers serving in pay grades E-4 and E-5\u201d and inserting \u201csuch members. In authorizing an allowance under this subparagraph, the commanding officer shall consider the availability of quarters for the member and whether such quarters are inadequate or an impediment to morale, good order, or discipline\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_7",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 106. Report regarding the calculation of cost-of-living allowances",
+      "text": "(a)Report requiredNot later than April 1, 2025, the Secretary of Defense shall submit to the Committees on Armed Services of the Senate and House of Representatives a report regarding the CONUS COLA and OCONUS COLA. Such report shall include the following elements:(1)The factors used to calculate the CONUS COLA and OCONUS COLA.(2)An explanation of how the factors described in paragraph (1) are determined.(3)An explanation of how the CONUS COLA and OCONUS COLA may be adjusted, including\u2014(A)timelines for such an adjustment;(B)bases for such an adjustment; and(C)the relationship between CONUS COLA and OCONUS COLA.(4)The evaluation of the Secretary whether the surveys used to collect data from members to calculate the CONUS COLA and OCONUS COLA are effective.(5)The evaluation of the Secretary whether the calculation of the CONUS COLA and OCONUS COLA is effective.(6)The assessment of the Secretary whether the calculation of the CONUS COLA or OCONUS COLA should include additional factors, including\u2014(A)the number of dependents a member has;(B)vicinity and commissary costs;(C)the reimbursement of expenses (including tolls and taxes) incurred by a member based on the duty station of such member;(D)remoteness;(E)hardship;(F)loss of spousal income;(G)the unavailability of goods or services in the vicinity of a duty station; and(H)any other factor that the Secretary determines appropriate.(b)DefinitionsIn this section:(1)The term CONUS COLA means the cost-of-living allowance paid to a member of the uniformed services under section 403b of title 37, United States Code.(2)The term OCONUS COLA means a cost-of-living allowance paid to a member of the uniformed services on the basis that\u2014(A)the member is assigned to a permanent duty station located outside the continental United States; or(B)the dependents of such member reside outside the continental United States but not in the vicinity of the permanent duty station of such member.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1807.  Report regarding the calculation of cost-of-living allowances.",
+      "text": "(a) Report required.\u2014Not later than April 1, 2025, the Secretary of Defense shall submit to the Committees on Armed Services of the Senate and House of Representatives a report regarding the CONUS COLA and OCONUS COLA. Such report shall include the following elements:\n (1) The factors used to calculate the CONUS COLA and OCONUS COLA.\n\n (2) An explanation of how the factors described in paragraph (1) are determined.\n\n (3) An explanation of how the CONUS COLA and OCONUS COLA may be adjusted, including\u2014\n (A) timelines for such an adjustment;\n\n (B) bases for such an adjustment; and\n\n (C) the relationship between CONUS COLA and OCONUS COLA.\n\n (4) The evaluation of the Secretary whether the surveys used to collect data from members to calculate the CONUS COLA and OCONUS COLA are effective.\n\n (5) The evaluation of the Secretary whether the calculation of the CONUS COLA and OCONUS COLA is effective.\n\n (6) The assessment of the Secretary whether the calculation of the CONUS COLA or OCONUS COLA should include additional factors, including\u2014\n (A) the number of dependents a member has;\n\n (B) vicinity and commissary costs;\n\n (C) the reimbursement of expenses (including tolls and taxes) incurred by a member based on the duty station of such member;\n\n (D) remoteness;\n\n (E) hardship;\n\n (F) loss of spousal income;\n\n (G) the unavailability of goods or services in the vicinity of a duty station; and\n\n (H) any other factor that the Secretary determines appropriate.\n\n (b) Definitions.\u2014In this section:\n (1) The term \u201cCONUS COLA\u201d means the cost-of-living allowance paid to a member of the uniformed services under section 403b of title 37, United States Code.\n\n (2) The term \u201cOCONUS COLA\u201d means a cost-of-living allowance paid to a member of the uniformed services on the basis that\u2014\n (A) the member is assigned to a permanent duty station located outside the continental United States; or\n\n (B) the dependents of such member reside outside the continental United States but not in the vicinity of the permanent duty station of such member.\n\n subtitle B\u2014Child Care",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_8",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 201. Competitive pay for Department of Defense child care personnel",
+      "text": "(a)In generalSection 1792(c) of title 10, United States Code, is amended to read as follows:(c)Competitive rates of pay(1)For the purpose of providing military child development centers with a qualified and stable civilian workforce, employees at a military installation who are directly involved in providing child care and who are paid from nonappropriated funds\u2014(A)in the case of entry-level employees, shall be paid a rate of pay competitive with the rates of pay paid to other equivalent non-Federal positions within the metropolitan statistical area or non-metropolitan statistical area (as the case may be) in which such Department employee\u2019s position is located; and(B)in the case of any employee not covered by subparagraph (A), shall be paid a rate of pay competitive with the rates of pay paid to other employees with similar training, seniority, and experience within the metropolitan statistical area or non-metropolitan statistical area (as the case may be) in which such Department employee\u2019s position is located.(2)Notwithstanding paragraph (1), no employee shall receive a rate of pay under this subsection that is lower than the minimum hourly rate of pay applicable to civilian employees of the Department of Defense.(3)For purposes of determining the rates of pay under paragraph (1), the Secretary shall use the metropolitan and nonmetropolitan area occupational employment and wage estimates published monthly by the Bureau of Labor Statistics..(b)Application(1)In generalThe amendment made by subsection (a) shall take effect on the first day of the first pay period beginning after the date of the enactment of this Act.(2)Rates of pay(A)Current employee pay rate not reducedThe rate of pay for any individual who is an employee covered by subsection (c) of section 1792 of title 10, United States Code, as amended by subsection (a) of this section, on the date of the enactment of this Act shall not be reduced by operation of such amendment.(B)Pay band minimumAny employee whose rate of pay is fixed under such subsection (c), as so amended, and who is within any pay band shall receive a rate of pay not less than the minimum rate of pay applicable to such pay band.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1811. Competitive pay for Department of Defense child care personnel.",
+      "text": "(a) In general.\u2014Section 1792(c) of title 10, United States Code, is amended to read as follows:\n \u201c(c) Competitive rates of pay.\u2014 (1) For the purpose of providing military child development centers with a qualified and stable civilian workforce, employees at a military installation who are directly involved in providing child care and who are paid from nonappropriated funds\u2014\n \u201c(A) in the case of entry-level employees, shall be paid a rate of pay competitive with the rates of pay paid to other equivalent non-Federal positions within the metropolitan statistical area or non-metropolitan statistical area (as the case may be) in which such Department employee\u2019s position is located; and\n\n \u201c(B) in the case of any employee not covered by subparagraph (A), shall be paid a rate of pay competitive with the rates of pay paid to other employees with similar training, seniority, and experience within the metropolitan statistical area or non-metropolitan statistical area (as the case may be) in which such Department employee\u2019s position is located.\n\n \u201c(2) Notwithstanding paragraph (1), no employee shall receive a rate of pay under this subsection that is lower than the minimum hourly rate of pay applicable to civilian employees of the Department of Defense.\n\n \u201c(3) For purposes of determining the rates of pay under paragraph (1), the Secretary shall use the metropolitan and nonmetropolitan area occupational employment and wage estimates published monthly by the Bureau of Labor Statistics.\u201d.\n\n (b) Application.\u2014\n (1) IN GENERAL.\u2014The amendment made by subsection (a) shall take effect on the first day of the first pay period beginning after the date of the enactment of this Act.\n\n (2) RATES OF PAY.\u2014\n (A) CURRENT EMPLOYEE PAY RATE NOT REDUCED.\u2014The rate of pay for any individual who is an employee covered by subsection (c) of section 1792 of title 10, United States Code, as amended by subsection (a) of this section, on the date of the enactment of this Act shall not be reduced by operation of such amendment.\n\n (B) PAY BAND MINIMUM.\u2014Any employee whose rate of pay is fixed under such subsection (c), as so amended, and who is within any pay band shall receive a rate of pay not less than the minimum rate of pay applicable to such pay band.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_9",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 202. Parent fees at military child development centers for child care employees",
+      "text": "Section 1793 of title 10, United States Code, is amended by striking subsection (d) and inserting the following new subsections:(d)Child care employee discountIn order to support recruitment and retention initiatives, the Secretary of Defense shall charge reduced fees for the attendance, at a military child development center, of the children of a child care employee as follows:(1)For the first child, no fee.(2)For each other child, a fee equal to or less than a fee discounted under subsection (c).(e)Prohibition of concurrent discountsA family may not receive discounts under subsections (c) and (d) concurrently..",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1812. Parent fees at military child development centers for child care employees.",
+      "text": "Section 1793 of title 10, United States Code, is amended by striking subsection (d) and inserting the following new subsections:\n\n \u201c(d) Child care employee discount.\u2014In order to support recruitment and retention initiatives, the Secretary of Defense shall charge reduced fees for the attendance, at a military child development center, of the children of a child care employee as follows:\n \u201c(1) For the first child, no fee.\n\n \u201c(2) For each other child, a fee equal to or less than a fee discounted under subsection (c).\n\n \u201c(e) Prohibition of concurrent discounts.\u2014A family may not receive discounts under subsections (c) and (d) concurrently.\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_10",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 203. Child care services and youth program services for dependents",
+      "text": "(a)In generalSubject to the availability of appropriations, the Secretary of Defense shall fully fund requests for financial assistance to eligible civilian providers of child care services or youth program services under section 1798 of title 10, United States Code.(b)Rule of constructionThis section shall not be construed to limit the authority of the Secretary under subsection (a) of section 1798 of such title to determine whether to provide such financial assistance to an eligible provider.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1816. Child care services and youth program services for dependents.",
+      "text": "(a) In general.\u2014Subject to the availability of appropriations, the Secretary of Defense shall fully fund requests for financial assistance to eligible civilian providers of child care services or youth program services under section 1798 of title 10, United States Code.\n\n (b) Rule of construction.\u2014This section shall not be construed to limit the authority of the Secretary under subsection (a) of section 1798 of such title to determine whether to provide such financial assistance to an eligible provider.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_11",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 204. Briefings on military child development centers",
+      "text": "(a)Briefings requiredThe Secretary of Defense, in coordination with the Secretaries of the military departments, shall submit to the Committees on Armed Services of the Senate and House of Representatives briefings regarding child care services at military child development centers according to the following schedule:(1)Once every three months beginning on March 1, 2025, and ending on March 1, 2026.(2)On March 1 of each year thereafter through 2030.(b)ElementsEach briefing shall include, with regard to the period covered by the briefing, the following elements:(1)Waiting lists for such services, disaggregated by military installation.(2)Shortages of child care employees at military child development centers, disaggregated by military installation.(3)Insufficient capacity of military child development centers, disaggregated by military installation.(4)Efforts of the Secretary of Defense to mitigate such shortages or insufficiencies in order to shorten such waiting lists.(c)DefinitionsIn this section, the terms military child development center and child care employee have the meanings given such terms in section 1800 of title 10, United States Code.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1817. Briefings on military child development centers.",
+      "text": "(a) Briefings required.\u2014The Secretary of Defense, in coordination with the Secretaries of the military departments, shall submit to the Committees on Armed Services of the Senate and House of Representatives briefings regarding child care services at military child development centers according to the following schedule:\n (1) Once every three months beginning on March 1, 2025, and ending on March 1, 2026.\n\n (2) On March 1 of each year thereafter through 2030.\n\n (b) Elements.\u2014Each briefing shall include, with regard to the period covered by the briefing, the following elements:\n (1) Waiting lists for such services, disaggregated by military installation.\n\n (2) Shortages of child care employees at military child development centers, disaggregated by military installation.\n\n (3) Insufficient capacity of military child development centers, disaggregated by military installation.\n\n (4) Efforts of the Secretary of Defense to mitigate such shortages or insufficiencies in order to shorten such waiting lists.\n\n (c) Definitions.\u2014In this section, the terms \u201cmilitary child development center\u201d and \u201cchild care employee\u201d have the meanings given such terms in section 1800 of title 10, United States Code.\n\n subtitle C\u2014Military Housing",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_12",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 301. Budget justification for certain Facilities Sustainment, Restoration, and Modernization projects",
+      "text": "Chapter 9 of title 10, United States Code, is amended by inserting after section 226 the following new section:227.Budget justification for covered military unaccompanied housing Facilities Sustainment, Restoration, and Modernization projects(a)In generalAlong with the budget for each fiscal year submitted by the President pursuant to section 1105(a) of title 31, United States Code, each Secretary of a military department shall include a consolidated budget justification display that individually identifies\u2014(1)for the fiscal year covered by the budget, the total requested expenditure for Facilities Sustainment, Restoration, and Modernization projects for covered military unaccompanied housing, disaggregated by military department; and(2)the total expenditure for Facilities Sustainment, Restoration, and Modernization projects made during the fiscal year beginning two years before the fiscal year covered by the budget, disagggregated by\u2014(A)military installation;(B)the type of facility repaired or restored under such projects; (C)the number of such projects that were for sustainment or repair of a facility; and(D)the number of such projects that were for restoration or modernization of a facility.(b)DefinitionsIn this section:(1)The term covered military unaccompanied housing has the meaning given in section 2856 of this title.(2)The terms facility and military installation have the meanings given, respectively, in section 2801 of this title. .",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1821. Budget justification for certain Facilities Sustainment, Restoration, and Modernization projects.",
+      "text": "Chapter 9 of title 10, United States Code, is amended by inserting after section 226 the following new section:\n\n \u201c\u00a7 227. Budget justification for covered military unaccompanied housing Facilities Sustainment, Restoration, and Modernization projects\n\n \u201c(a) In general.\u2014Along with the budget for each fiscal year submitted by the President pursuant to section 1105(a) of title 31, United States Code, each Secretary of a military department shall include a consolidated budget justification display that individually identifies\u2014\n \u201c(1) for the fiscal year covered by the budget, the total requested expenditure for Facilities Sustainment, Restoration, and Modernization projects for covered military unaccompanied housing compared to the total expenditure required by such projects, disaggregated by military department; and\n\n \u201c(2) the total expenditure for Facilities Sustainment, Restoration, and Modernization projects made during the fiscal year beginning two years before the fiscal year covered by the budget, disagggregated by\u2014\n \u201c(A) military installation;\n\n \u201c(B) the type of facility repaired or restored under such projects; \n\n \u201c(C) the number of such projects that were for sustainment or repair of a facility; and\n\n \u201c(D) the number of such projects that were for restoration or modernization of a facility.\n\n \u201c(b) Definitions.\u2014In this section:\n \u201c(1) The term \u2018covered military unaccompanied housing\u2019 has the meaning given in section 2856 of this title.\n\n \u201c(2) The terms \u2018facility\u2019 and \u2018military installation\u2019 have the meanings given, respectively, in section 2801 of this title.\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_13",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 227. Budget justification for covered military unaccompanied housing Facilities Sustainment, Restoration, and Modernization projects",
+      "text": "(a)In generalAlong with the budget for each fiscal year submitted by the President pursuant to section 1105(a) of title 31, United States Code, each Secretary of a military department shall include a consolidated budget justification display that individually identifies\u2014(1)for the fiscal year covered by the budget, the total requested expenditure for Facilities Sustainment, Restoration, and Modernization projects for covered military unaccompanied housing, disaggregated by military department; and(2)the total expenditure for Facilities Sustainment, Restoration, and Modernization projects made during the fiscal year beginning two years before the fiscal year covered by the budget, disagggregated by\u2014(A)military installation;(B)the type of facility repaired or restored under such projects; (C)the number of such projects that were for sustainment or repair of a facility; and(D)the number of such projects that were for restoration or modernization of a facility.(b)DefinitionsIn this section:(1)The term covered military unaccompanied housing has the meaning given in section 2856 of this title.(2)The terms facility and military installation have the meanings given, respectively, in section 2801 of this title.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1821. Budget justification for certain Facilities Sustainment, Restoration, and Modernization projects.",
+      "text": "Chapter 9 of title 10, United States Code, is amended by inserting after section 226 the following new section:\n\n \u201c\u00a7 227. Budget justification for covered military unaccompanied housing Facilities Sustainment, Restoration, and Modernization projects\n\n \u201c(a) In general.\u2014Along with the budget for each fiscal year submitted by the President pursuant to section 1105(a) of title 31, United States Code, each Secretary of a military department shall include a consolidated budget justification display that individually identifies\u2014\n \u201c(1) for the fiscal year covered by the budget, the total requested expenditure for Facilities Sustainment, Restoration, and Modernization projects for covered military unaccompanied housing compared to the total expenditure required by such projects, disaggregated by military department; and\n\n \u201c(2) the total expenditure for Facilities Sustainment, Restoration, and Modernization projects made during the fiscal year beginning two years before the fiscal year covered by the budget, disagggregated by\u2014\n \u201c(A) military installation;\n\n \u201c(B) the type of facility repaired or restored under such projects; \n\n \u201c(C) the number of such projects that were for sustainment or repair of a facility; and\n\n \u201c(D) the number of such projects that were for restoration or modernization of a facility.\n\n \u201c(b) Definitions.\u2014In this section:\n \u201c(1) The term \u2018covered military unaccompanied housing\u2019 has the meaning given in section 2856 of this title.\n\n \u201c(2) The terms \u2018facility\u2019 and \u2018military installation\u2019 have the meanings given, respectively, in section 2801 of this title.\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 90.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_14",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 302. Digital facilities management systems for military departments",
+      "text": "(a)Digital facilities management systems for military departments(1)CriteriaNot later than 180 days after the date of the enactment of this Act, the Assistant Secretary of Defense for Energy, Installations, and Environment, in coordination with each covered Assistant Secretary, shall develop criteria for a new or established digital facilities management system for each military department. Each such system shall have the capability to, with respect to each military installation\u2014(A)track conditions of individual facilities, applying the uniform index developed under section 2838 of the National Defense Authorization Act for Fiscal Year 2024 (Public Law 118\u201331), for each military installation under the jurisdiction of each such covered Assistant Secretary;(B)plan for maintenance actions for each facility; and(C)generate reports that include data on\u2014(i)the type and function of each facility;(ii)the overall condition of each facility;(iii)planned maintenance for each facility during a 5-year period following the date of submission of the criteria;(iv)conditions that may lead to a failure to maintain minimum physical security or configuration standards for members of the Armed Forces during the 12-month period following the date of submission of the criteria; and(v)the date on which the facility will have been in use for 40 years.(2)BriefingNot later than 30 days after the date on which the Assistant Secretary of Defense for Energy, Installations, and Environment develops the criteria required under paragraph (1), the Assistant Secretary shall provide to Congress a briefing on such criteria. (3)ImplementationNot later than one year after the date on which the Assistant Secretary of Defense for Energy, Installations, and Environment develops the criteria required under paragraph (1), each covered Assistant Secretary shall implement a digital facilities management system for the military department under the jurisdiction of that meets the criteria described in paragraph (1).(b)DefinitionsIn this section:(1)The term covered Assistant Secretary means\u2014(A)the Assistant Secretary of the Army for Installations, Energy, and Environment;(B)the Assistant Secretary of the Navy for Energy, Installations, and Environment; and(C)the Assistant Secretary of the Air Force for Installations, Environment, and Energy.(2)The term facility has the meaning given in section 2801 of title 10, United States Code.(3)The term military department has the meaning given in section 101 of such title.(4)The term military installation has the meaning given in section 2801 of such title.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1825. Digital facilities management systems for military departments.",
+      "text": "(a) Digital facilities management systems for military departments.\u2014\n (1) CRITERIA.\u2014Not later than 180 days after the date of the enactment of this Act, the Assistant Secretary of Defense for Energy, Installations, and Environment, in coordination with each covered Assistant Secretary, shall develop criteria for a new or established digital facilities management system for each military department. Each such system shall have the capability to, with respect to each military installation\u2014\n (A) track conditions of individual facilities, applying the uniform index developed under section 2838 of the National Defense Authorization Act for Fiscal Year 2024 (Public Law 118\u201331), for each military installation under the jurisdiction of each such covered Assistant Secretary;\n\n (B) plan for maintenance actions for each facility; and\n\n (C) generate reports that include data on\u2014\n (i) the type and function of each facility;\n\n (ii) the overall condition of each facility;\n\n (iii) planned maintenance for each facility during a five-year period following the date of submission of the criteria;\n\n (iv) conditions that may lead to a failure to maintain minimum physical security or configuration standards for members of the Armed Forces during the 12-month period following the date of submission of the criteria; and\n\n (v) the date on which the facility will have been in use for 40 years.\n\n (2) BRIEFING.\u2014Not later than 30 days after the date on which the Assistant Secretary of Defense for Energy, Installations, and Environment develops the criteria required under paragraph (1), the Assistant Secretary shall provide to the congressional defense committees a briefing on such criteria. \n\n (3) IMPLEMENTATION.\u2014Not later than one year after the date on which the Assistant Secretary of Defense for Energy, Installations, and Environment develops the criteria required under paragraph (1), each covered Assistant Secretary shall implement a digital facilities management system for the military department under the jurisdiction of that meets the criteria described in paragraph (1).\n\n (b) Definitions.\u2014In this section:\n (1) The term \u201ccovered Assistant Secretary\u201d means\u2014\n (A) the Assistant Secretary of the Army for Installations, Energy, and Environment;\n\n (B) the Assistant Secretary of the Navy for Energy, Installations, and Environment; and\n\n (C) the Assistant Secretary of the Air Force for Installations, Environment, and Energy.\n\n (2) The term \u201cfacility\u201d has the meaning given in section 2801 of title 10, United States Code.\n\n (3) The term \u201cmilitary department\u201d has the meaning given in section 101 of such title.\n\n (4) The term \u201cmilitary installation\u201d has the meaning given in section 2801 of such title.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_15",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 303. Strategy for use of existing leasing authorities to address shortages of covered military unaccompanied housing required",
+      "text": "(a)Strategy required(1)In generalEach Secretary of a military department shall develop a strategy to use the authorities of such Secretary, in effect as of such date, to lease real property to address shortages of covered military unaccompanied housing.(2)ElementsEach strategy required by paragraph (1) shall include, with respect to military installations under the jurisdiction of the Secretary of the military department concerned\u2014(A)an identification of military installations with the largest shortages of covered military unaccompanied housing;(B)an identification of military installations where existing facilities of covered military unaccompanied housing are in poor or failing condition under the uniform index for evaluating the condition of covered military unaccompanied housing required by section 2838 of the National Defense Authorization Act for Fiscal Year 2024 (Public Law 118\u201331; 10 U.S.C. note prec. 2851);(C)plans of such Secretary in effect as of the date of the enactment of this Act to address shortages of covered military unaccompanied housing or the condition of facilities of covered military unaccompanied housing using\u2014(i)military construction projects; or(ii)facility sustainment, restoration, or modernization funds; and(D)an assessment of whether the leasing authority under section 2661 of title 10, United States Code, or intergovernmental support agreements under section 2679 of such title would be suitable for use by such Secretary to address\u2014(i)shortages of covered military unaccompanied housing; or(ii)the poor or failing condition of a facility of covered military unaccompanied housing.(3)DeadlineEach Secretary of a military department shall submit to the congressional defense committees a report that includes the strategy required by subsection (a) by not later than 180 days after the date of the enactment of this Act.(b)Authorization of appropriationsThe following amounts are authorized to be appropriated to the Secretary of Defense to carry out actions that may be taken pursuant to a strategy required by subsection (a):(1)$15,000,000 for Operations and Maintenance, Army.(2)$9,000,000 for Operations and Maintenance, Navy.(3)$6,000,000 for Operations and Maintenance, Marine Corps.(4)$15,000,000 for Operations and Maintenance, Air Force.(c)DefinitionsIn this section:(1)The term congressional defense committees has the meaning given such term in section 101(a)(16) of title 10, United States Code.(2)The term covered military unaccompanied housing has the meaning given such term in section 2856 of such title.(3)The terms facility and military construction project have the meanings given such terms in section 2801 of such title.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1822.  Strategy for use of existing leasing authorities to address shortages of covered military unaccompanied housing required.",
+      "text": "(a) Strategy required.\u2014\n (1) IN GENERAL.\u2014Each Secretary of a military department shall develop a strategy to use the authorities of such Secretary, in effect as of such date, to lease real property to address shortages of covered military unaccompanied housing.\n\n (2) ELEMENTS.\u2014Each strategy required by paragraph (1) shall include, with respect to military installations under the jurisdiction of the Secretary of the military department concerned\u2014\n (A) an identification of military installations with the largest shortages of covered military unaccompanied housing;\n\n (B) an identification of military installations where existing facilities of covered military unaccompanied housing are in poor or failing condition under the uniform index for evaluating the condition of covered military unaccompanied housing required by section 2838 of the National Defense Authorization Act for Fiscal Year 2024 (Public Law 118\u201331; 10 U.S.C. note prec. 2851);\n\n (C) plans of such Secretary in effect as of the date of the enactment of this Act to address shortages of covered military unaccompanied housing or the condition of facilities of covered military unaccompanied housing using\u2014\n (i) military construction projects; or\n\n (ii) facility sustainment, restoration, or modernization funds; and\n\n (D) an assessment of whether the leasing authority under section 2661 of title 10, United States Code, or intergovernmental support agreements under section 2679 of such title would be suitable for use by such Secretary to address\u2014\n (i) shortages of covered military unaccompanied housing; or\n\n (ii) the poor or failing condition of a facility of covered military unaccompanied housing.\n\n (3) DEADLINE.\u2014Each Secretary of a military department shall submit to the congressional defense committees a report that includes the strategy required by subsection (a) by not later than 180 days after the date of the enactment of this Act.\n\n (b) Definitions.\u2014In this section:\n (1) The term \u201ccongressional defense committees\u201d has the meaning given such term in section 101(a)(16) of title 10, United States Code.\n\n (2) The term \u201ccovered military unaccompanied housing\u201d has the meaning given such term in section 2856 of such title.\n\n (3) The terms \u201cfacility\u201d and \u201cmilitary construction project\u201d have the meanings given such terms in section 2801 of such title.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_16",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 304. Independent assessment of estimated costs of certain strategies to address shortages of covered military unaccompanied housing",
+      "text": "(a)AgreementNot later than 60 days after the date of the enactment of this Act, the Secretary of Defense shall seek to enter into an agreement with an FFRDC for an assessment that compares the estimated total cost to the United States during the 20-year period beginning on the date of the enactment of this Act of\u2014(1)the construction and maintenance of facilities of covered military unaccompanied housing to address shortages in covered military unaccompanied housing; and(2)the modification of policies of the Department of Defense and each military department to permit a greater number of members of the Armed Forces to reside in housing facilities other than covered military unaccompanied housing (including such policies relating to the payment of basic allowance for housing under section 403 of title 37, United States Code).(b)Report on assessmentAn FFRDC that enters into an agreement under subsection (a) shall submit to the Secretary of Defense a report on such assessment. Such report shall include\u2014(1)a comprehensive review of\u2014(A)the total lifecycle costs, disaggregated by each military department, of the construction, sustainment, and modernization of facilities of covered unaccompanied housing to meet\u2014(i)the needs for housing for members of the Armed Forces as of the date of the enactment of this Act; and(ii)the projected needs for such housing during the 20-year period beginning on the date of the enactment of this Act, as determined by each Secretary concerned;(B)the applicable policies of each military department with respect to which members of the Armed Forces are required to reside in covered military unaccompanied housing; and(C)for each military department, the expected expenditure for basic allowance for housing under section 403 of title 37, United States Code, during the 20-year period beginning on the date of the enactment of this Act compared to such total lifecycle costs;(2)a summary of the research and other activities carried out as part of such comprehensive review; and(3)recommendations of the FFRDC with respect to requirements and policies of the Department of Defense and each military department for covered military unaccompanied housing.(c)Submission to Congress(1)In generalNot later than 30 days after the date on which the Secretary of Defense receives the report under subsection (b), such Secretary shall submit to the Committees on Armed Services of the House of Representatives and the Senate a report that includes\u2014(A)an unaltered copy of the report of the FFRDC submitted to the Secretary of Defense pursuant to subsection (b); and(B)the written responses of the Secretary of the Defense and the Secretaries concerned with respect to the results of such report.(2)FormThe report required by paragraph (1) shall be submitted in unclassified form, but may include a classified annex.(d)DefinitionsIn this section:(1)The term covered military unaccompanied housing has the meaning given such term in section 2856 of title 10, United States Code.(2)The term facility has the meaning given such term in section 2801 of such title.(3)The term FFRDC means a federally funded research and development center.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1823. Independent assessment of estimated costs of certain strategies to address shortages of covered military unaccompanied housing.",
+      "text": "(a) Agreement.\u2014Not later than 60 days after the date of the enactment of this Act, the Secretary of Defense shall seek to enter into an agreement with an FFRDC for an assessment that compares the estimated total cost to the United States during the 20-year period beginning on the date of the enactment of this Act of\u2014\n (1) the construction and maintenance of facilities of covered military unaccompanied housing to address shortages in covered military unaccompanied housing; and\n\n (2) the modification of policies of the Department of Defense and each military department to permit a greater number of members of the Armed Forces to reside in housing facilities other than covered military unaccompanied housing (including such policies relating to the payment of basic allowance for housing under section 403 of title 37, United States Code).\n\n (b) Report on assessment.\u2014An FFRDC that enters into an agreement under subsection (a) shall submit to the Secretary of Defense a report on such assessment. Such report shall include\u2014\n (1) a comprehensive review of\u2014\n (A) the total lifecycle costs, disaggregated by each military department, of the construction, sustainment, and modernization of facilities of covered unaccompanied housing to meet\u2014\n (i) the needs for housing for members of the Armed Forces as of the date of the enactment of this Act; and\n\n (ii) the projected needs for such housing during the 20-year period beginning on the date of the enactment of this Act, as determined by each Secretary concerned;\n\n (B) the applicable policies of each military department with respect to which members of the Armed Forces are required to reside in covered military unaccompanied housing; and\n\n (C) for each military department, the expected expenditure for basic allowance for housing under section 403 of title 37, United States Code, during the 20-year period beginning on the date of the enactment of this Act compared to such total lifecycle costs;\n\n (2) a summary of the research and other activities carried out as part of such comprehensive review; and\n\n (3) recommendations of the FFRDC with respect to requirements and policies of the Department of Defense and each military department for covered military unaccompanied housing.\n\n (c) Submission to Congress.\u2014\n (1) IN GENERAL.\u2014Not later than 30 days after the date on which the Secretary of Defense receives the report under subsection (b), such Secretary shall submit to the Committees on Armed Services of the House of Representatives and the Senate a report that includes\u2014\n (A) an unaltered copy of the report of the FFRDC submitted to the Secretary of Defense pursuant to subsection (b); and\n\n (B) the written responses of the Secretary of the Defense and the Secretaries concerned with respect to the results of such report.\n\n (2) FORM.\u2014The report required by paragraph (1) shall be submitted in unclassified form, but may include a classified annex.\n\n (d) Definitions.\u2014In this section:\n (1) The term \u201ccovered military unaccompanied housing\u201d has the meaning given such term in section 2856 of title 10, United States Code.\n\n (2) The term \u201cfacility\u201d has the meaning given such term in section 2801 of such title.\n\n (3) The term \u201cFFRDC\u201d means a federally funded research and development center.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_17",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 401. TRICARE program: waiver of referral requirement under TRICARE Prime for certain care in a military medical treatment facility",
+      "text": "Section 1095f(a)(2) of title 10, United States Code, is amended\u2014(1)by inserting (A) before The Secretary; and(2)by adding at the end the following new subparagraph:(B)The Secretary shall waive the referral requirement in paragraph (1) in the case of a member of the Armed Forces serving on active duty who seeks to obtain any of the following kinds of care in a military medical treatment facility:(i)Physical therapy.(ii)Nutritional.(iii)Audiological.(iv)Optometric.(v)Podiatric.(vi)Primary and preventive health care services for women (as such term is defined in section 1074d of this title)..",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1832. TRICARE program: waiver of referral requirement under TRICARE Prime for certain care in a military medical treatment facility.",
+      "text": "Section 1095f(a)(2) of title 10, United States Code, is amended\u2014\n\n (1) by inserting \u201c(A)\u201d before \u201cThe Secretary\u201d; and\n\n (2) by adding at the end the following new subparagraph:\n \u201c(B) The Secretary shall waive the referral requirement in paragraph (1) in the case of a member of the armed forces serving on active duty who seeks to obtain any of the following kinds of care in a military medical treatment facility:\n \u201c(i) Physical therapy.\n\n \u201c(ii) Nutritional.\n\n \u201c(iii) Audiological.\n\n \u201c(iv) Optometric.\n\n \u201c(v) Podiatric.\n\n \u201c(vi) Primary and preventive health care services for women (as such term is defined in section 1074d of this title).\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_18",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 402. Referral of a member of the Armed Forces to a TRICARE provider for urgent behavioral health services",
+      "text": "Section 722 of the National Defense Authorization Act for Fiscal Year 2020 (Public Law 116\u201392; 10 U.S.C. 1071 note) is amended\u2014(1)by striking If and inserting (a) In general.\u2014Subject to subsection (b), if; and(2)by adding at the end the following new subsection:(b)Urgent behavioral health services(1)In generalIf the Secretary of Defense is unable to provide urgent behavioral health services in a military medical treatment facility to a covered individual during the three-day period following the date on which such services are first requested by the covered individual, the Secretary shall refer the covered individual to a provider under the TRICARE program to receive such services.(2)Covered individual definedIn this subsection, the term covered individual means\u2014(A)a member of the Armed Forces on active duty;(B)a retired member of the Armed Forces;(C)a dependent of a member described in paragraph (1); or(D)a dependent of a former member described in paragraph (2)..",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1834. Referral of a member of the Armed Forces to a TRICARE provider for urgent behavioral health services.",
+      "text": "Section 722 of the National Defense Authorization Act for Fiscal Year 2020 (Public Law 116\u201392; 10 U.S.C. 1071 note) is amended\u2014\n\n (1) by striking \u201cIf\u201d and inserting \u201c(a) In general.\u2014Subject to subsection (b), if\u201d; and\n\n (2) by adding at the end the following new subsection:\n \u201c(b) Urgent behavioral health services.\u2014\n \u201c(1) IN GENERAL.\u2014If the Secretary of Defense is unable to provide urgent behavioral health services in a military medical treatment facility to a covered individual during the three-day period following the date on which such services are first requested by the covered individual, the Secretary shall refer the covered individual to a provider under the TRICARE program to receive such services.\n\n \u201c(2) COVERED INDIVIDUAL DEFINED.\u2014In this subsection, the term \u2018covered individual\u2019 means\u2014\n \u201c(A) a member of the Armed Forces on active duty;\n\n \u201c(B) a retired member of the Armed Forces; or\n\n \u201c(C) a dependent of a member described in paragraph (1); or\n\n \u201c(D) a dependent of a former member described in paragraph (2).\u201d.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_19",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 403. Retention of health care providers: surveys; briefing; reports",
+      "text": "(a)SurveysThe Secretary of a military department shall conduct an annual survey of health care providers under the jurisdiction of such Secretary to determine why such providers remain on, or separate from, active duty in such military department.(b)BriefingNot later than 90 days after the date of the enactment of this Act, the Secretary of a military department shall provide to the Committees on Armed Services of the Senate and House of Representatives a briefing regarding the plan of such Secretary to carry out the survey under this section.(c)ReportsNot later than September 30 of each year, beginning in 2025, the Secretary of a military department shall submit to the Committees on Armed Services of the Senate and House of Representatives a report regarding the most recent survey under this section.(1)ElementsEach report shall include the following elements:(A)Demographic data regarding the providers, disaggregated under paragraph (2).(B)Reasons providers gave for remaining.(C)Reasons providers gave for separating.(D)The determination of the Secretary whether there is a trend regarding retention or such reasons.(E)Efforts of the Secretary to reverse a negative trend or encourage a positive trend.(F)Legislative recommendations of the Secretary regarding how to reverse a negative trend or encourage a positive trend.(2)Demographic dataIn each report, the Secretary of a military department shall disaggregate demographic data regarding providers who participated in the most recent survey on the bases of the following categories:(A)Medical specialty.(B)Rank.(C)Gender.(D)Years of service in such military department.(E)Whether the provider became an officer on active duty in such military department\u2014(i)pursuant to the Armed Forces Health Professions Scholarship and Financial Assistance program under subchapter I of chapter 105 of title 10, United States Code;(ii)after graduating from the Uniformed Services University of the Health Sciences established under section 2112 of such title; or(iii)otherwise. (d)TerminationThis section shall cease to have effect on September 30, 2030.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1837. Retention of health care providers: surveys; briefing; reports.",
+      "text": "(a) Surveys.\u2014The Secretary of a military department shall conduct an annual survey of health care providers under the jurisdiction of such Secretary to determine why such providers remain on, or separate from, active duty in such military department.\n\n (b) Briefing.\u2014Not later than 90 days after the date of the enactment of this Act, the Secretary of a military department shall provide to the Committees on Armed Services of the Senate and House of Representatives a briefing regarding the plan of such Secretary to carry out the survey under this section.\n\n (c) Reports.\u2014Not later than September 30 of each year, beginning in 2025, the Secretary of a military department shall submit to the Committees on Armed Services of the Senate and House of Representatives a report regarding the most recent survey under this section.\n (1) ELEMENTS.\u2014Each report shall include the following elements:\n (A) Demographic data regarding the providers, disaggregated under paragraph (2).\n\n (B) Reasons providers gave for remaining.\n\n (C) Reasons providers gave for separating.\n\n (D) The determination of the Secretary whether there is a trend regarding retention or such reasons.\n\n (E) Efforts of the Secretary to reverse a negative trend or encourage a positive trend.\n\n (F) Legislative recommendations of the Secretary regarding how to reverse a negative trend or encourage a positive trend.\n\n (2) DEMOGRAPHIC DATA.\u2014In each report, the Secretary of a military department shall disaggregate demographic data regarding providers who participated in the most recent survey on the bases of the following categories:\n (A) Medical specialty.\n\n (B) Rank.\n\n (C) Gender.\n\n (D) Years of service in such military department.\n\n (E) Whether the provider became an officer on active duty in such military department\u2014\n (i) pursuant to the Armed Forces Health Professions Scholarship and Financial Assistance program under subchapter I of chapter 105 of title 10, United States Code;\n\n (ii) after graduating from the Uniformed Services University of the Health Sciences established under section 2112 of such title; or\n\n (iii) otherwise. \n\n (d) Termination.\u2014This section shall cease to have effect on September 30, 2030.\n\n subtitle E\u2014Support for Military Spouses",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_20",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 501. Interstate compacts for portability of occupational licenses of military spouses: permanent authority",
+      "text": "(a)In generalSection 1784(h) of title 10, United States Code, is amended by striking paragraph (5).(b)Effective dateThe amendment made by subsection (a) shall take effect as if enacted immediately following the enactment of the National Defense Authorization Act for Fiscal Year 2020 (Public Law 116\u201392), to which such amendment relates.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1841. Interstate compacts for portability of occupational licenses of military spouses: permanent authority.",
+      "text": "(a) In general.\u2014Section 1784(h) of title 10, United States Code, is amended by striking paragraph (5).\n\n (b) Effective date.\u2014The amendment made by subsection (a) shall take effect as if enacted immediately following the enactment of the National Defense Authorization Act for Fiscal Year 2020 (Public Law 116\u201392), to which such amendment relates.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_21",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 502. Permanent Military Spouse Career Accelerator program",
+      "text": "(a)EstablishmentSection 1784 of title 10, United States Code, is amended by adding at the end the following new subsection:(i)Employment fellowship opportunitiesThe Secretary of Defense shall carry out a program to provide spouses of members of the Armed Forces with paid fellowships with employers in various industries. To carry out such program, the Secretary shall take the following steps:(1)Enter into an agreement with an entity to conduct such program.(2)Determine the appropriate capacity for the program based on the availability of appropriations for such purpose.(3)Establish criteria to evaluate the effectiveness and cost-effectiveness of the program in supporting the employment of such spouses..(b)Effective dateSubsection (i) of such section shall take effect on January 1, 2026.(c)Conforming amendmentThe pilot program under section 564 of the National Defense Authorization Act for Fiscal Year 2022 (Public Law 117\u201381; 10 U.S.C. 1784 note) shall terminate on January 1, 2026.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1842. Permanent Military Spouse Career Accelerator program.",
+      "text": "(a) Establishment.\u2014Section 1784 of title 10, United States Code, is amended by adding at the end the following new subsection:\n \u201c(i) Employment fellowship opportunities.\u2014The Secretary of Defense shall carry out a program to provide spouses of members of the armed forces with paid fellowships with employers in various industries. To carry out such program, the Secretary shall take the following steps:\n \u201c(1) Enter into an agreement with an entity to conduct such program.\n\n \u201c(2) Determine the appropriate capacity for the program based on the availability of appropriations for such purpose.\n\n \u201c(3) Establish criteria to evaluate the effectiveness and cost-effectiveness of the program in supporting the employment of such spouses.\u201d.\n\n (b) Effective date.\u2014Subsection (i) of such section shall take effect on January 1, 2026.\n\n (c) Conforming amendment.\u2014The pilot program under section 564 of the National Defense Authorization Act for Fiscal Year 2022 (Public Law 117\u201381; 10 U.S.C. 1784 note) shall terminate on January 1, 2026.",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  },
+  {
+    "trace_id": "ih_rh_22",
+    "origin": "IH",
+    "ih_section": {
+      "title": "Section 503. Child care services and youth program services for dependents: period of services for a member with a spouse seeking employment",
+      "text": "(a)PeriodThe Secretary of a military department may provide a covered member with covered services for a period of at least 180 days.(b)Rule of constructionNothing in this section shall be construed to\u2014(1)entitle a covered member to covered services; or(2)give priority to a covered member for purposes of a determination regarding who shall receive covered services.(c)DefinitionsIn this section:(1)The term covered member means a member of the Armed Forces\u2014(A)who has a dependent child; and(B)whose spouse is seeking employment.(2)The term covered services means child care services or youth program services provided or paid for by the Secretary of Defense under subchapter II of chapter 88 of title 10, United States Code.",
+      "stage": "IH"
+    },
+    "rh_section": {
+      "title": "SEC. 1843. Child care services and youth program services for dependents: period of services for a member with a spouse seeking employment.",
+      "text": "(a) Period.\u2014The Secretary of a military department may provide a covered member with covered services for a period of at least 180 days.\n\n (b) Rule of construction.\u2014Nothing in this section shall be construed to\u2014\n (1) entitle a covered member to covered services; or\n\n (2) give priority to a covered member for purposes of a determination regarding who shall receive covered services.\n\n (c) Definitions.\u2014In this section:\n (1) The term \u201ccovered member\u201d means a member of the Armed Forces\u2014\n (A) who has a dependent child; and\n\n (B) whose spouse is seeking employment.\n\n (2) The term \u201ccovered services\u201d means child care services or youth program services provided or paid for by the Secretary of Defense under subchapter II of chapter 88 of title 10, United States Code.\n\n subtitle F\u2014Other Matters, Reports, and Briefings",
+      "stage": "RH",
+      "similarity_from_ih": 100.0
+    }
+  }
+];
+        let currentTrace = null;
+        let filteredTraces = tracesData;
+
+
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Loaded IH→RH traces:', tracesData.length);
+            renderTraces();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('trace-modal')) {
+                    closeModal();
+                }
+            });
+        }
+
+        function renderTraces() {
+            const container = document.getElementById('traces-container');
+            container.innerHTML = '';
+
+            filteredTraces.forEach((trace, index) => {
+                const card = createTraceCard(trace, index);
+                container.appendChild(card);
+            });
+        }
+
+        function createTraceCard(trace, index) {
+            const card = document.createElement('div');
+            card.className = 'trace-card';
+            card.style.position = 'relative';
+            card.onclick = () => openTraceModal(trace);
+            
+            const displayTitle = trace.ih_section.title;
+            
+            // Create path indicators (IH → RH only)
+            const pathHtml = `
+                <span class="stage-indicator stage-ih">IH</span>
+                <span class="trace-arrow">→</span>
+                <span class="stage-indicator stage-rh">RH</span>
+            `;
+            
+            // Get preview text
+            const previewText = trace.ih_section.text;
+            const preview = previewText.substring(0, 200) + (previewText.length > 200 ? '...' : '');
+            
+            card.innerHTML = `
+                <div class="trace-title">${displayTitle}</div>
+                <div class="trace-path">${pathHtml}</div>
+                <div class="trace-preview">${preview}</div>
+            `;
+
+            return card;
+        }
+
+        function filterTraces(filter) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            switch(filter) {
+                case 'all':
+                    filteredTraces = tracesData;
+                    break;
+            }
+            
+            renderTraces();
+        }
+
+        function searchTraces(query) {
+            if (!query.trim()) {
+                filteredTraces = tracesData;
+                renderTraces();
+                return;
+            }
+            
+            const lowerQuery = query.toLowerCase();
+            filteredTraces = tracesData.filter(trace => {
+                const title = trace.ih_section.title.toLowerCase();
+                const text = trace.ih_section.text.toLowerCase();
+                return title.includes(lowerQuery) || text.includes(lowerQuery);
+            });
+            
+            renderTraces();
+        }
+
+        function openTraceModal(trace) {
+            currentTrace = trace;
+            
+            const displayTitle = trace.ih_section.title;
+            document.getElementById('modal-title').innerHTML = 
+                `<i class="fas fa-shield-alt"></i> ${displayTitle}`;
+            
+            showContentFocusedDiff();
+            
+            document.getElementById('trace-modal').classList.add('active');
+        }
+
+        function showContentFocusedDiff() {
+            const trace = currentTrace;
+            const leftText = trace.ih_section.text;
+            const rightText = trace.rh_section.text;
+            
+            generateContentFocusedDiff(leftText, rightText);
+        }
+
+        function normalizeText(text) {
+            // Normalize text for content comparison
+            return text
+                // Normalize whitespace
+                .replace(/\s+/g, ' ')
+                // Normalize punctuation
+                .replace(/\s*([.,:;])\s*/g, '$1 ')
+                // Normalize parentheses and brackets
+                .replace(/\s*([\(\)\[\]])\s*/g, '$1')
+                // Remove extra spaces around dashes
+                .replace(/\s*[-—–]\s*/g, '—')
+                // Normalize quotes
+                .replace(/["'"']/g, '"')
+                // Remove multiple spaces
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function generateContentFocusedDiff(text1, text2) {
+            const leftContainer = document.getElementById('diff-left-content');
+            const rightContainer = document.getElementById('diff-right-content');
+            const statsContainer = document.getElementById('diff-stats');
+            
+            // Normalize texts for better comparison
+            const normalizedText1 = normalizeText(text1);
+            const normalizedText2 = normalizeText(text2);
+            
+            // Split into semantic chunks (sentences or clauses)
+            const chunks1 = splitIntoSemanticChunks(normalizedText1);
+            const chunks2 = splitIntoSemanticChunks(normalizedText2);
+            
+            // Use content-focused diff algorithm
+            const diffResult = computeContentDiff(chunks1, chunks2);
+            
+            leftContainer.innerHTML = diffResult.leftHtml;
+            rightContainer.innerHTML = diffResult.rightHtml;
+            
+            // Calculate stats
+            const totalChunks = Math.max(chunks1.length, chunks2.length);
+            const similarity = totalChunks > 0 ? Math.round((diffResult.stats.unchanged / totalChunks) * 100) : 100;
+            
+            // Update stats
+            statsContainer.innerHTML = `
+                <div class="stat-box stat-added">
+                    <div class="stat-number">${diffResult.stats.added}</div>
+                    <div class="stat-label">Added Content</div>
+                </div>
+                <div class="stat-box stat-removed">
+                    <div class="stat-number">${diffResult.stats.removed}</div>
+                    <div class="stat-label">Removed Content</div>
+                </div>
+                <div class="stat-box stat-unchanged">
+                    <div class="stat-number">${diffResult.stats.unchanged}</div>
+                    <div class="stat-label">Unchanged Content</div>
+                </div>
+                <div class="stat-box stat-similarity">
+                    <div class="stat-number">${similarity}%</div>
+                    <div class="stat-label">Content Similarity</div>
+                </div>
+            `;
+        }
+
+        function splitIntoSemanticChunks(text) {
+            // Split text into meaningful chunks (clauses, phrases)
+            return text
+                .split(/[.;:]/)
+                .map(chunk => chunk.trim())
+                .filter(chunk => chunk.length > 0);
+        }
+
+        function computeContentDiff(chunks1, chunks2) {
+            let leftHtml = '';
+            let rightHtml = '';
+            let stats = { added: 0, removed: 0, unchanged: 0 };
+            
+            // Use a similarity-based matching approach
+            const used2 = new Set();
+            
+            for (let i = 0; i < chunks1.length; i++) {
+                const chunk1 = chunks1[i];
+                let bestMatch = -1;
+                let bestSimilarity = 0;
+                
+                // Find best matching chunk in text2
+                for (let j = 0; j < chunks2.length; j++) {
+                    if (used2.has(j)) continue;
+                    
+                    const chunk2 = chunks2[j];
+                    const similarity = calculateContentSimilarity(chunk1, chunk2);
+                    
+                    if (similarity > bestSimilarity && similarity > 0.7) {
+                        bestSimilarity = similarity;
+                        bestMatch = j;
+                    }
+                }
+                
+                if (bestMatch !== -1) {
+                    // Found a good match
+                    used2.add(bestMatch);
+                    const chunk2 = chunks2[bestMatch];
+                    
+                    if (bestSimilarity > 0.95) {
+                        // Very similar - show as unchanged
+                        leftHtml += `<span class="content-unchanged">${escapeHtml(chunk1)}.</span> `;
+                        rightHtml += `<span class="content-unchanged">${escapeHtml(chunk2)}.</span> `;
+                        stats.unchanged++;
+                    } else {
+                        // Similar but modified
+                        leftHtml += `<span class="content-modified">${escapeHtml(chunk1)}.</span> `;
+                        rightHtml += `<span class="content-modified">${escapeHtml(chunk2)}.</span> `;
+                        stats.unchanged++;
+                    }
+                } else {
+                    // No match found - removed
+                    leftHtml += `<span class="content-removed">${escapeHtml(chunk1)}.</span> `;
+                    stats.removed++;
+                }
+            }
+            
+            // Add unmatched chunks from text2 as added
+            for (let j = 0; j < chunks2.length; j++) {
+                if (!used2.has(j)) {
+                    rightHtml += `<span class="content-added">${escapeHtml(chunks2[j])}.</span> `;
+                    stats.added++;
+                }
+            }
+            
+            return {
+                leftHtml: leftHtml,
+                rightHtml: rightHtml,
+                stats: stats
+            };
+        }
+
+        function calculateContentSimilarity(text1, text2) {
+            // Simple content similarity based on common words
+            const words1 = text1.toLowerCase().split(/\s+/);
+            const words2 = text2.toLowerCase().split(/\s+/);
+            
+            const set1 = new Set(words1);
+            const set2 = new Set(words2);
+            
+            const intersection = new Set([...set1].filter(x => set2.has(x)));
+            const union = new Set([...set1, ...set2]);
+            
+            return intersection.size / union.size;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function closeModal() {
+            document.getElementById('trace-modal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
+    
