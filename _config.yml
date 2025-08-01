@@ -1,0 +1,16 @@
+title: NDAA HR5009 Tracing Tool
+description: Enhanced NDAA source tracing interface with dynamic content and amendment tracking
+baseurl: ""
+url: "https://gaoaonge.github.io/hr5009-tracing-tool"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Exclude files from processing
+exclude:
+  - "*.py"
+  - "*.xlsx"
+  - "*.json"
+  - "*.txt"
+  - "README.md" 
